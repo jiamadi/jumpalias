@@ -1,0 +1,12 @@
+# macOS metadata
+.DS_Store
+._*
+
+# Release artifacts
+/dist/
+*.crx
+*.pem
+
+# Local dependencies and logs
+node_modules/
+*.log

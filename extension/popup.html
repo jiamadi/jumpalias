@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>JumpAlias</title>
+  <link rel="stylesheet" href="popup.css">
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700;900&display=swap" rel="stylesheet">
+</head>
+
+<body>
+  <div class="container">
+    <header class="topbar">
+      <h2>JumpAlias</h2>
+      <div class="topbar-actions">
+        <button id="settingsToggle" class="icon-button" type="button" aria-controls="settingsPanel" aria-expanded="false" aria-label="Settings">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 3-1 3-3 1-2 3 2 2-1 3 3 2 1 3h4l1-3 3-1 2-3-2-2 1-3-3-2-1-3Z"/><circle cx="10.5" cy="11.5" r="3"/></svg>
+        </button>
+        <button id="languageToggle" class="icon-button language-button" type="button" aria-label="Language">中</button>
+        <button id="themeToggle" class="icon-button" type="button" aria-label="Theme"></button>
+      </div>
+    </header>
+    <div id="storageNotice" class="storage-notice" role="status" hidden>
+      <span id="storageNoticeText"></span>
+      <button id="reloadStorageButton" class="settings-button" data-i18n="reloadStorage">Reload extension</button>
+    </div>
+    <div id="settingsPanel" hidden>
+      <div class="settings-heading"><strong data-i18n="guideTitle">Settings & guide</strong><span data-i18n="guideSubtitle">Give your pages memorable paths.</span></div>
+      <section class="guide-card">
+        <h3><span class="section-number">01</span><span data-i18n="usageTitle">Quick start</span></h3>
+        <ol class="usage-steps">
+          <li data-i18n="captureInstructions">Open the extension to fill in the current URL. Enter a path and press Enter to save.</li>
+          <li data-i18n="jumpInstructions">Enter the keyword in the address bar, press Tab or Space, type a path, then press Enter.</li>
+        </ol>
+        <p class="guide-note" data-i18n="treeInstructions">Spaces group paths into a tree. A parent can have its own URL and children.</p>
+      </section>
+      <section class="guide-card">
+      <h3><span class="section-number">02</span><span data-i18n="controlsTitle">Personalize</span></h3>
+    <section class="quick-guide">
+      <span data-i18n="omniboxHint">Press <code>j</code> and <code>Tab</code>, then type a path such as <code>dev github</code>.</span>
+      <button id="keywordSettingsButton" class="settings-button" data-i18n="openShortcutSettings" aria-expanded="false">Settings</button>
+      <p class="control-note" data-i18n="keywordSummary">Tab and Space stay fixed. Keyword changes require a manifest reload.</p>
+      <div class="capture-setting">
+        <span id="captureHint" data-i18n="captureHint">Save current page</span>
+        <input id="shortcutInput" type="text" readonly data-i18n-placeholder="shortcutPlaceholder" placeholder="Press a shortcut">
+        <button id="shortcutSettingsButton" class="settings-button" data-i18n="openShortcutSettings">Settings</button>
+      </div>
+      <p class="control-note" data-i18n="shortcutHelp">Shows Chrome's actual binding. Apply changes in Chrome settings.</p>
+      <p class="guide-note" data-i18n="appearanceInstructions">Header buttons switch language and cycle System, Light and Dark.</p>
+    </section>
+    <section id="keywordSettings" class="keyword-settings" hidden>
+      <label for="keywordInput" data-i18n="keywordLabel">Address bar keyword</label>
+      <input id="keywordInput" type="text" maxlength="32" autocomplete="off" spellcheck="false">
+      <button id="saveKeywordButton" class="settings-button" data-i18n="downloadManifest">Download manifest</button>
+      <p data-i18n="keywordHelp">Replace manifest.json in the extension folder with this file, then reload the extension. Tab and Space stay unchanged.</p>
+    </section>
+      </section>
+      <section class="guide-card">
+        <h3><span class="section-number">03</span><span data-i18n="syncTitle">Sync & backup</span><span class="feature-badge">Chrome Sync</span></h3>
+        <p data-i18n="syncInstructions">Use the same Google account, enable Chrome Sync, and install the same extension ID on each device.</p>
+        <ul class="feature-list">
+          <li data-i18n="syncConflictHelp">Paths sync independently; newer revisions win for the same path.</li>
+          <li data-i18n="syncDeleteHelp">Active devices confirm deletions. Devices inactive for over 30 days rebuild from cloud on return.</li>
+          <li data-i18n="backupInstructions">Import reads a JSON file; Export copies JSON to the clipboard.</li>
+        </ul>
+        <p class="guide-note" data-i18n="syncLimits">Theme stays on this device. Sync has storage limits; no iCloud sync.</p>
+      </section>
+      <p class="supported-urls" data-i18n="urlHint">Supports https://, http://, chrome-extension://, chrome://</p>
+    </div>
+    <table id="kvTable">
+      <tr>
+        <td><input type="text" id="keyInput" data-i18n-placeholder="pathPlaceholder" placeholder="Path, e.g. dev github" autocomplete="off"></td>
+        <td><input type="text" id="valueInput" data-i18n-placeholder="urlPlaceholder" placeholder="Enter URL" autocomplete="off"></td>
+        <td><button class="addButton" id="addButton">+</button></td>
+      </tr>
+    </table>
+    <div class="list-toolbar">
+      <strong id="shortcutListTitle" data-i18n="listTitle">Saved paths</strong>
+      <div class="link_container">
+        <button class="importButton" id="importButton" data-i18n="import">Import</button>
+        <input id="importFileInput" type="file" accept=".json,application/json" hidden>
+        <button class="importButton" id="exportButton" data-i18n="export">Export</button>
+        <button class="importButton" id="githubButton">GitHub</button>
+      </div>
+    </div>
+    <ul id="shortcutTree" class="shortcut-tree"></ul>
+  </div>
+  <script src="shortcut-client.js"></script>
+  <script src="url-rules.js"></script>
+  <script src="popup.js"></script>
+</body>
+
+</html>
