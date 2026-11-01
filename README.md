@@ -1,97 +1,114 @@
-# JumpAlias Chrome Extension
+# JumpAlias
 
-A Chrome extension that lets you jump to saved URLs from the address bar using memorable paths.
+Give your pages memorable paths. JumpAlias is a lightweight Chrome extension for saving frequently visited URLs and opening them directly from the address bar.
 
-## Features
+[![Platform: Chrome](https://img.shields.io/badge/platform-Chrome-4285F4?logo=googlechrome&logoColor=white)](https://www.google.com/chrome/) ![Manifest V3](https://img.shields.io/badge/manifest-V3-4285F4) ![JavaScript](https://img.shields.io/badge/language-JavaScript-F7DF1E) ![Chrome Sync](https://img.shields.io/badge/sync-Chrome-34A853) ![Version 2.0.0](https://img.shields.io/badge/version-2.0.0-6C3CFF) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
-- **Path shortcuts**: Press `j` and then `Tab` or Space, then enter a path such as `dev github` or `dev docs`
-- **Shortcut tree**: The popup groups shared path prefixes into expandable folders
-- **Quick capture**: Press `Command+Shift+K` on macOS or `Ctrl+Shift+K` on Windows/Linux to add the current page; its URL is filled in automatically and you only enter a path
-- **Chrome Sync**: Shortcuts follow the signed-in Chrome profile through `chrome.storage.sync`
-- **Conflict handling**: Each path syncs independently; timestamp and device ID resolve conflicting edits
-- **Safe deletion**: Active devices acknowledge deletions before cloud cleanup; devices inactive for over 30 days rebuild from cloud with a local recovery backup
-- **Bilingual UI**: Toggle between Chinese and English; Chinese is the default
-- **Multiple URL Support**: Supports https://, http://, chrome-extension://, and chrome:// URLs
-- **Custom Shortcuts**: Create your own shortcuts for any website or Chrome extension page
-- **Import/Export**: Backup and restore your shortcuts
-- **Dark/Light Theme**: Toggle between themes
-- **Easy Management**: Add, edit, and delete shortcuts through a simple interface
+**English** · [简体中文](README.zh-CN.md)
 
-## Installation
+Save GitHub as `dev github`, then type `j` → **Tab** or **Space** → `dev github` → **Enter** in the address bar. No bookmark hunting or long URLs to remember.
 
-1. Download or clone this repository
-2. Open Chrome and go to `chrome://extensions/`
-3. Enable "Developer mode" in the top right
-4. Click "Load unpacked" and select the `extension` folder
-5. The extension will be installed and ready to use
+## Why install JumpAlias?
 
-## Usage
+- **Open recurring pages faster.** Give repositories, documentation and everyday tools short, memorable aliases.
+- **Organize paths as a tree.** `dev github` and `dev docs` share the `dev` parent. Any parent can also have its own URL.
+- **Save the page you are viewing.** Open the popup and the current URL is filled in automatically; enter a path and press Enter.
+- **Keep your setup portable.** Sync through Chrome or use JSON import and export for backup and migration.
 
-### Method 1: Omnibox
-- Click on the Chrome address bar
-- Type `j`, press Tab, then type a path
-- Press Enter to navigate to the website or extension page
+## Screenshots
 
-### Method 2: Popup Interface
-- Click the extension icon in the toolbar
-- Add shortcuts through the popup interface
-- Click on any shortcut to navigate to the website
+### Saved paths at a glance
 
-## Adding Shortcuts
+Add a path at the top, browse expandable folders, and click a saved URL to open it. Duplicate URL reminders help you avoid accidental duplicates; you can still confirm another alias for the same address.
 
-1. Open the extension popup
-2. Enter a path — spaces create a namespace, such as `dev github`, `dev docs`, or `work jira`
-3. Enter the complete URL (including protocol)
-4. Click the "+" button to add the shortcut
+![JumpAlias popup with quick capture, a saved-path tree, and import/export controls](docs/images/saved-paths.png)
 
-A path is both a node and a potential folder. For example, you can save `dev`
-to one URL and also create `dev github` and `dev docs`; the popup renders `dev` as a
-clickable node with those children beneath it. Whether a node has its own URL
-is entirely your choice.
+### Settings when you need them
 
-## Supported URL Types
+The gear opens the usage guide, shortcut settings and sync information. Language and theme controls stay in the header. Choose English or Chinese, and system, light or dark appearance.
 
-- **Regular websites**: `https://github.com`, `http://example.com`
-- **Chrome extension pages**: `chrome-extension://pkgccpejnmalmdinmhkkfafefagiiiad/json-format/index.html`
-- **Chrome internal pages**: `chrome://extensions/`, `chrome://settings/`
+![Expanded settings with the quick-start guide and personalization controls](docs/images/settings-guide.png)
 
-## Import/Export
+Screenshots show an example configuration; saved paths are user-defined.
 
-- **Export**: Click the "Export" button to copy all shortcuts to clipboard as JSON
-- **Import**: Click the "Import" button and select a JSON file to restore shortcuts
+## Quick start
 
-## Examples
+### Install from source
 
-| Shortcut | URL |
-|----------|-----|
+1. Download this repository or clone `https://github.com/jiamadi/jumpalias.git`.
+2. Open `chrome://extensions/` and enable **Developer mode**.
+3. Click **Load unpacked** and select the repository's `extension` directory.
+
+### Save a page
+
+Open the popup using the toolbar icon or the default save shortcut:
+
+| System | Default shortcut |
+| --- | --- |
+| macOS | `⌘ + Shift + K` |
+| Windows / Linux | `Ctrl + Shift + K` |
+
+The current URL is filled in automatically. Enter `dev github`, then press **Enter** or click **+**. The popup displays Chrome's actual assigned shortcut; change it at `chrome://extensions/shortcuts` if needed. Chrome may leave a conflicting shortcut unassigned.
+
+### Jump to a page
+
+1. Focus the address bar: `⌘ + L` on macOS or `Ctrl + L` on Windows/Linux.
+2. Type `j`, then press **Tab** or **Space**.
+3. Type a saved path and press **Enter**.
+
+| Path | URL |
+| --- | --- |
 | `dev github` | `https://github.com` |
 | `dev docs` | `https://developer.mozilla.org` |
 | `work mail` | `https://mail.google.com` |
-| `json` | `chrome-extension://pkgccpejnmalmdinmhkkfafefagiiiad/json-format/index.html` |
-| `ext` | `chrome://extensions/` |
+| `settings` | `chrome://settings/` |
 
-## Technical Details
+The default trigger is `j`. Chrome stores it in `manifest.json`; changing it requires replacing the configuration and reloading the extension. Tab and Space are fixed activation keys.
 
-Synchronization architecture, migration and limitations: [Synchronization](docs/synchronization.md).
-Run its regression tests with `node --test tests/*.test.cjs`.
+## Sync and backup
 
-- **Manifest Version**: 3
-- **Permissions**: storage, clipboardWrite, tabs
-- **Background Script**: service_worker.js
-- **Popup**: popup.html with popup.js and popup.css
+Paths sync individually through `chrome.storage.sync`, using timestamps and device IDs to resolve conflicting edits. Deletions are acknowledged by active devices before cleanup; devices inactive for more than 30 days rebuild from the cloud with a local recovery backup.
+
+- Cross-device sync requires Chrome Sync enabled, the same Google account, and the same extension ID. Unpacked installations do not automatically guarantee the same ID.
+- Chrome Sync allows 100 KB total, 8 KB per item, and 512 items. Device records and pending deletions also consume quota. This is not unlimited storage or iCloud sync.
+- **Export** copies paths as JSON to the clipboard; save that text as a `.json` file for backup.
+- **Import** reads a JSON file. Imported paths replace existing entries with the same path.
+
+```json
+{
+  "dev github": "https://github.com",
+  "dev docs": "https://developer.mozilla.org"
+}
+```
+
+## Supported addresses
+
+Save `https://`, `http://`, `chrome://` and `chrome-extension://` URLs. Opening certain internal or extension pages remains subject to Chrome restrictions and whether the target extension is installed.
+
+## Development
+
+No build step or third-party JavaScript dependencies are required.
+
+```sh
+node --test tests/*.test.cjs
+```
+
+```text
+extension/  Manifest V3 extension, popup and synchronization modules
+tests/      Synchronization and duplicate-URL regression tests
+docs/       Synchronization design and screenshots
+```
+
+The extension requests `storage`, `clipboardWrite` and `tabs` for saved paths, JSON export, and capturing the current URL. See [synchronization architecture](docs/synchronization.md) for implementation details.
 
 ## Contributing
 
-Feel free to submit issues and enhancement requests!
+[Report a bug or suggest a feature](https://github.com/jiamadi/jumpalias/issues). Include reproduction steps and your Chrome version; remove private URLs from reports and screenshots.
 
-## Project history
+## References
 
-JumpAlias evolved from [Omnibox-Shortcuts](https://github.com/zohaib2002/Omnibox-Shortcuts).
-The original Git history and contributor attribution are retained.
-The current repository is [jiamadi/jumpalias](https://github.com/jiamadi/jumpalias).
+- [Omnibox-Shortcuts](https://github.com/zohaib2002/Omnibox-Shortcuts)
 
 ## License
 
-This project is available under the [MIT License](LICENSE).
-
-本项目采用 MIT 许可证，允许使用、修改和分发；请保留版权及许可声明。
+[MIT](LICENSE).
