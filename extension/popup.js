@@ -21,7 +21,7 @@ const translations = {
     syncInstructions: '路径与语言通过 Chrome 免费同步。各设备需登录同一 Google 账号、开启 Chrome 同步，并安装相同扩展 ID 的插件。',
     syncConflictHelp: '每条路径独立同步；相同路径发生冲突时，优先保留时间戳较新的版本。',
     syncDeleteHelp: '删除会等待活跃设备确认后清理。超过 30 天未活跃的设备重连时，会备份本地旧数据并以云端记录重建。',
-    backupInstructions: '「导入」选择 JSON 文件；「导出」将 JSON 复制到剪贴板。迁移或重装前建议先导出备份。',
+    backupInstructions: '「导入」直接粘贴 JSON；「导出」将 JSON 复制到剪贴板。迁移或重装前建议先导出备份。',
     syncLimits: '主题仅保存在当前设备。同步额度约 100 KB / 单项 8 KB / 512 项（含设备与删除记录）；暂不支持 iCloud。',
     omniboxHint: '地址栏 <code>{keyword}</code> + <code>Tab</code> 或空格跳转路径，例如 <code>dev github</code>',
     keywordLabel: '地址栏触发词', downloadManifest: '下载配置',
@@ -57,7 +57,7 @@ const translations = {
     syncInstructions: 'Paths and language sync free through Chrome. Use the same Google account, enable Chrome Sync, and install the same extension ID on each device.',
     syncConflictHelp: 'Paths sync independently. For conflicting edits to the same path, the newer timestamp wins.',
     syncDeleteHelp: 'Deletions are cleaned up after active devices acknowledge them. Devices inactive for over 30 days back up old local data and rebuild from cloud on return.',
-    backupInstructions: 'Import reads a JSON file; Export copies JSON to the clipboard. Export a backup before moving or reinstalling.',
+    backupInstructions: 'Import by pasting JSON; Export copies JSON to the clipboard. Export a backup before moving or reinstalling.',
     syncLimits: 'Theme stays on this device. Sync allows about 100 KB total / 8 KB per item / 512 items, including device and deletion records. No iCloud sync yet.',
     omniboxHint: 'Address bar <code>{keyword}</code> + <code>Tab</code> or Space jumps to a path, e.g. <code>dev github</code>',
     keywordLabel: 'Address bar keyword', downloadManifest: 'Download config',
@@ -164,20 +164,18 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
   document.getElementById('saveKeywordButton').addEventListener('click', downloadKeywordManifest);
   document.getElementById('addButton').addEventListener('click', addKeyValuePair);
-  const importFileInput = document.getElementById('importFileInput');
-  document.getElementById('importButton').addEventListener('click', () => importFileInput.click());
-  importFileInput.addEventListener('change', async () => {
-    const file = importFileInput.files[0];
-    if (!file) return;
-    try {
-      await importShortcutsFromJSON(await file.text());
-    } catch (error) {
-      alert(error.message);
-    } finally {
-      importFileInput.value = '';
-    }
-  });
+  document.getElementById('importButton').addEventListener('click', () => importShortcutsFromJSON());
   document.getElementById('exportButton').addEventListener('click', exportShortcutsToJSON);
+  document.getElementById('historyCheckButton').addEventListener('click', async () => {
+    const input = prompt('输入要检查的内容（不含 j），例如 git/tv60：', 'git/tv60');
+    if (input === null) return;
+    try {
+      const result = await chrome.runtime.sendMessage({ type: 'jumpkey:shortcuts', action: 'historyCheck', input });
+      const report = JSON.stringify(result, null, 2);
+      await navigator.clipboard.writeText(report);
+      alert('检查结果已复制，请粘贴到聊天中：\n\n' + report);
+    } catch (error) { alert('检查失败：' + error.message); }
+  });
   document.getElementById('githubButton').addEventListener('click', () => chrome.tabs.create({ url: 'https://github.com/jiamadi/jumpalias' }));
   [keyInput, valueInput].forEach((input) => input.addEventListener('keydown', (event) => {
     if (event.key === 'Enter' && !event.isComposing && event.keyCode !== 229) {
@@ -463,8 +461,11 @@ function renderNode(node) {
     details.open = true;
     const summary = document.createElement('summary');
     summary.textContent = node.path.split(' ').at(-1);
+    if (node.url) {
+      summary.classList.add('branch-with-url');
+      summary.appendChild(renderLeaf(node, false));
+    }
     details.appendChild(summary);
-    if (node.url) details.appendChild(renderLeaf(node, false));
     const children = document.createElement('ul');
     Array.from(node.children.values()).sort((a, b) => a.path.localeCompare(b.path)).forEach((child) => children.appendChild(renderNode(child)));
     details.appendChild(children);

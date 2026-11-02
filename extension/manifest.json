@@ -1,9 +1,14 @@
 {
   "manifest_version": 3,
-  "name": "JumpAlias",
+  "name": "↗",
   "version": "2.0.0",
   "description": "Use j + Tab to jump to saved URL paths such as dev github",
-  "permissions": ["storage", "clipboardWrite", "tabs"],
+  "permissions": [
+    "storage",
+    "clipboardWrite",
+    "tabs",
+    "history"
+  ],
   "action": {
     "default_popup": "popup.html",
     "default_icon": {
@@ -29,12 +34,13 @@
     }
   },
   "icons": {
-    "16": "images/icon16.png",
+    "16": "images/omnibox-transparent16.png",
     "48": "images/icon48.png",
-    "64" : "images/icon64.png",
-    "128" : "images/icon128.png"
+    "64": "images/icon64.png",
+    "128": "images/icon128.png"
   },
   "omnibox": {
     "keyword": "j"
-  }
+  },
+  "short_name": "↗"
 }

@@ -176,7 +176,7 @@ test('background messaging and client exercise the real add/list/delete pipeline
   const chrome = {
     runtime: { id: 'extension', onMessage: event('message'), onStartup: event('startup'), onInstalled: event('install') },
     storage: { local, sync, onChanged: event('storage') },
-    omnibox: { setDefaultSuggestion() {}, onInputChanged: event('suggest'), onInputEntered: event('enter') },
+    omnibox: { setDefaultSuggestion() {}, onInputStarted: event('inputStart'), onInputCancelled: event('inputCancel'), onInputChanged: event('suggest'), onInputEntered: event('enter') },
     commands: { onCommand: event('command') }, tabs: {}, action: {}
   };
   const context = vm.createContext({ chrome, console, TextEncoder, crypto: require('node:crypto').webcrypto });

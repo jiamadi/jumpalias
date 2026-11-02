@@ -293,8 +293,29 @@ button {
   min-width: 0;
 }
 
-.shortcut-tree details > .tree-leaf {
-  margin: 4px 0 4px 4px;
+.shortcut-tree summary.branch-with-url {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  list-style: none;
+}
+
+.shortcut-tree summary.branch-with-url::-webkit-details-marker {
+  display: none;
+}
+
+.shortcut-tree summary.branch-with-url::before {
+  content: '▸';
+  flex: 0 0 auto;
+}
+
+.shortcut-tree details[open] > summary.branch-with-url::before {
+  content: '▾';
+}
+
+.shortcut-tree summary.branch-with-url > .tree-leaf {
+  flex: 1;
+  min-width: 0;
 }
 
 .tree-leaf code {

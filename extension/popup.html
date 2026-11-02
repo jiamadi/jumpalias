@@ -62,7 +62,7 @@
         <ul class="feature-list">
           <li data-i18n="syncConflictHelp">Paths sync independently; newer revisions win for the same path.</li>
           <li data-i18n="syncDeleteHelp">Active devices confirm deletions. Devices inactive for over 30 days rebuild from cloud on return.</li>
-          <li data-i18n="backupInstructions">Import reads a JSON file; Export copies JSON to the clipboard.</li>
+          <li data-i18n="backupInstructions">Import by pasting JSON; Export copies JSON to the clipboard.</li>
         </ul>
         <p class="guide-note" data-i18n="syncLimits">Theme stays on this device. Sync has storage limits; no iCloud sync.</p>
       </section>
@@ -79,8 +79,8 @@
       <strong id="shortcutListTitle" data-i18n="listTitle">Saved paths</strong>
       <div class="link_container">
         <button class="importButton" id="importButton" data-i18n="import">Import</button>
-        <input id="importFileInput" type="file" accept=".json,application/json" hidden>
         <button class="importButton" id="exportButton" data-i18n="export">Export</button>
+        <button class="importButton" id="historyCheckButton">检查历史匹配</button>
         <button class="importButton" id="githubButton">GitHub</button>
       </div>
     </div>
