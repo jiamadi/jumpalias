@@ -33,6 +33,7 @@ const translations = {
     listTitle: '已保存路径（{count}）', emptyTree: '还没有保存的路径。',
     import: '导入', export: '导出', exported: '快捷路径已复制到剪贴板。',
     importPrompt: '粘贴 JSON：', imported: '快捷路径导入成功。', importFailed: '导入失败：请提供由路径和 URL 组成的 JSON 对象。',
+    importQuotaWarning: '导入的路径共有 {count} 条（Chrome 同步上限约为 512 项）。继续导入可能超出存储配额导致同步异常，是否继续？',
     reloadStorage: '重新加载扩展（保留数据）', importWriteFailed: 'JSON 格式正确，但保存失败：{error}',
     invalidPath: '请输入由文字、数字、空格、连字符或下划线组成的路径。', duplicatePath: '该路径已存在；请先删除它或使用新路径。',
     draftPath: '为“{title}”输入路径', deletePath: '删除 {path}',
@@ -69,6 +70,7 @@ const translations = {
     listTitle: 'Saved paths ({count})', emptyTree: 'No saved paths yet.',
     import: 'Import', export: 'Export', exported: 'Shortcuts exported to Clipboard.',
     importPrompt: 'Paste the JSON string:', imported: 'Shortcuts imported successfully.', importFailed: 'Import failed: provide a JSON object of paths and URLs.',
+    importQuotaWarning: 'The imported file contains {count} paths (Chrome Sync limit is around 512 items). Continuing may exceed sync quota. Proceed anyway?',
     reloadStorage: 'Reload extension (keep data)', importWriteFailed: 'JSON is valid, but saving failed: {error}',
     invalidPath: 'Enter a path using letters, numbers, spaces, hyphens, or underscores.', duplicatePath: 'That path already exists. Delete it first or choose a new path.',
     draftPath: 'Path for {title}', deletePath: 'Delete {path}',
@@ -261,6 +263,9 @@ async function importShortcutsFromJSON(jsonString) {
     return;
   }
   try {
+    if (Object.keys(pairs).length > 400 && !confirm(t('importQuotaWarning', { count: Object.keys(pairs).length }))) {
+      return;
+    }
     keyValuePairs = await ShortcutRepository.import(pairs);
     document.getElementById('storageNotice').hidden = true;
     renderTree();
@@ -484,12 +489,16 @@ function renderLeaf(node, showName = true) {
   link.className = 'url_link';
   link.textContent = node.url;
   link.title = node.path;
-  link.addEventListener('click', () => chrome.tabs.create({ url: node.url }));
+  link.addEventListener('click', (event) => {
+    event.stopPropagation();
+    chrome.tabs.create({ url: node.url });
+  });
   const remove = document.createElement('button');
   remove.className = 'deleteButton';
   remove.textContent = '×';
   remove.title = t('deletePath', { path: node.path });
-  remove.addEventListener('click', async () => {
+  remove.addEventListener('click', async (event) => {
+    event.stopPropagation();
     try {
       keyValuePairs = await ShortcutRepository.remove(node.path);
       renderTree();

@@ -86,11 +86,12 @@ function resolveInput(input, pairs) {
   const slashIndex = trimmed.indexOf('/');
   const path = normalizeShortcut(slashIndex === -1 ? trimmed : trimmed.slice(0, slashIndex));
   if (Object.prototype.hasOwnProperty.call(pairs, path)) {
-    const target = pairs[path] + (slashIndex === -1 ? '' : trimmed.slice(slashIndex));
+    const base = pairs[path].replace(/\/+$/, '');
+    const suffix = slashIndex === -1 ? '' : '/' + trimmed.slice(slashIndex + 1).replace(/^\/+/, '');
+    const target = base + suffix;
     return { matched: true, url: /^[a-zA-Z]+:\/\//.test(target) ? target : `https://${target}` };
   }
-  const search = slashIndex === -1 ? input : path;
-  return { matched: false, search, url: `https://www.google.com/search?q=${encodeURIComponent(search)}` };
+  return { matched: false, search: trimmed, url: `https://www.google.com/search?q=${encodeURIComponent(trimmed)}` };
 }
 
 // Use the longest saved alias as the scope, preserving nested aliases.
@@ -206,9 +207,4 @@ chrome.omnibox.onInputEntered.addListener(async (input) => {
   const keyValuePairs = await shortcutStore.list();
   const target = resolveInput(input, keyValuePairs);
   navigateToUrl(target.url);
-});
-
-chrome.commands.onCommand.addListener(async (command) => {
-  if (command !== 'add-current-page') return;
-  await chrome.action.openPopup();
 });
