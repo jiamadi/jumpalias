@@ -1,0 +1,15 @@
+{
+  "name": "jumpalias",
+  "version": "2.0.0",
+  "description": "Chrome extension for jumping to saved URL paths from the address bar",
+  "private": true,
+  "scripts": {
+    "test": "node --test tests/*.test.cjs"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jiamadi/jumpalias.git"
+  },
+  "author": "JumpAlias authors",
+  "license": "MIT"
+}

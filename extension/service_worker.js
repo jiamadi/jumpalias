@@ -5,7 +5,6 @@ const shortcutStore = createJumpAliasSyncStore({ local: chrome.storage.local, sy
 chrome.runtime.onMessage.addListener((message, sender, respond) => {
   if (sender.id !== chrome.runtime.id || message?.type !== 'jumpkey:shortcuts') return;
   const actions = {
-    historyCheck: () => checkHistoryMatching(message.input),
     list: () => shortcutStore.list(),
     put: () => shortcutStore.put(message.path, message.url),
     remove: () => shortcutStore.remove(message.path),
@@ -18,18 +17,59 @@ chrome.runtime.onMessage.addListener((message, sender, respond) => {
   return true;
 });
 
+let currentLanguage = 'zh';
+
+const omniboxI18n = {
+  zh: {
+    idle: '输入快捷路径，按 Enter 打开 <dim>· 例如 dev github</dim>',
+    open: (url) => `按 Enter 打开 → <url>${escapeSuggestionText(url)}</url>`,
+    search: (query) => `未找到快捷路径，按 Enter 使用 Google 搜索 <match>${escapeSuggestionText(query)}</match>`,
+    historyHint: '选择下方历史记录打开 <dim>· 直接按 Enter 使用 Google 搜索</dim>',
+    historyTag: '历史'
+  },
+  en: {
+    idle: 'Type a saved path, press Enter to open <dim>· e.g. dev github</dim>',
+    open: (url) => `Press Enter to open → <url>${escapeSuggestionText(url)}</url>`,
+    search: (query) => `No path found. Press Enter to search on Google: <match>${escapeSuggestionText(query)}</match>`,
+    historyHint: 'Select a history suggestion below <dim>· Press Enter to search Google</dim>',
+    historyTag: 'History'
+  }
+};
+
+function getOmniboxText() {
+  return omniboxI18n[currentLanguage] || omniboxI18n.zh;
+}
+
+function updateDefaultSuggestion() {
+  chrome.omnibox.setDefaultSuggestion({ description: getOmniboxText().idle });
+}
+
+if (typeof chrome.storage?.sync?.get === 'function') {
+  chrome.storage.sync.get('language').then((stored) => {
+    if (stored?.language) {
+      currentLanguage = stored.language === 'en' ? 'en' : 'zh';
+      updateDefaultSuggestion();
+    }
+  }).catch(() => {});
+}
+
 chrome.storage.onChanged.addListener((changes, area) => {
-  if (area === 'sync' && Object.keys(changes).some((key) => key.startsWith('jk:'))) {
-    shortcutStore.list().catch(console.error);
+  if (area === 'sync') {
+    if (changes.language) {
+      currentLanguage = changes.language.newValue === 'en' ? 'en' : 'zh';
+      updateDefaultSuggestion();
+    }
+    if (Object.keys(changes).some((key) => key.startsWith('jk:'))) {
+      shortcutStore.list().catch(console.error);
+    }
   }
 });
 chrome.runtime.onStartup.addListener(() => shortcutStore.list().catch(console.error));
 chrome.runtime.onInstalled.addListener(() => shortcutStore.list().catch(console.error));
 
-const idleSuggestion = '输入快捷路径，按 Enter 打开 <dim>· 例如 dev github</dim>';
-chrome.omnibox.setDefaultSuggestion({ description: idleSuggestion });
+updateDefaultSuggestion();
 chrome.omnibox.onInputStarted.addListener(() => {
-  chrome.omnibox.setDefaultSuggestion({ description: idleSuggestion });
+  updateDefaultSuggestion();
 });
 
 function normalizeShortcut(shortcut) {
@@ -76,14 +116,24 @@ function fuzzyPathMatch(path, filter) {
   return true;
 }
 
+let historyCache = { hostname: '', visits: [], timestamp: 0 };
+
 async function historySuggestions(input, pairs, aliases) {
   const scope = historyScope(input, pairs);
   if (!scope || !chrome.history) return [];
   const prefix = scope.base.pathname.replace(/\/$/, '');
   const seen = new Set(aliases.map(({ content }) => resolveInput(content, pairs).url));
   try {
-    // Explicit startTime includes old visits, rather than Chrome's default last day.
-    const visits = await chrome.history.search({ text: scope.base.hostname, startTime: 0, maxResults: 10000 });
+    let visits;
+    const now = Date.now();
+    if (historyCache.hostname === scope.base.hostname && (now - historyCache.timestamp < 5000)) {
+      visits = historyCache.visits;
+    } else {
+      // Explicit startTime includes old visits, rather than Chrome's default last day.
+      visits = await chrome.history.search({ text: scope.base.hostname, startTime: 0, maxResults: 1000 });
+      historyCache = { hostname: scope.base.hostname, visits, timestamp: now };
+    }
+    const historyTag = getOmniboxText().historyTag;
     return visits.filter((item) => {
       if (!item.url || seen.has(item.url)) return false;
       let url;
@@ -99,7 +149,7 @@ async function historySuggestions(input, pairs, aliases) {
       .slice(0, 6)
       .map((item) => ({
         content: item.url,
-        description: `<dim>历史</dim> <url>${escapeSuggestionText(item.url)}</url>${item.title ? ` <dim>· ${escapeSuggestionText(item.title)}</dim>` : ''}`
+        description: `<dim>${historyTag}</dim> <url>${escapeSuggestionText(item.url)}</url>${item.title ? ` <dim>· ${escapeSuggestionText(item.title)}</dim>` : ''}`
       }));
   } catch (error) {
     console.warn('Could not read history suggestions:', error);
@@ -107,27 +157,11 @@ async function historySuggestions(input, pairs, aliases) {
   }
 }
 
-async function checkHistoryMatching(input) {
-  const pairs = await shortcutStore.list();
-  const scope = historyScope(input, pairs);
-  const permission = await chrome.permissions.contains({ permissions: ['history'] });
-  const report = {
-    input, historyPermission: permission,
-    alias: scope?.path || null, baseUrl: scope?.base.href || null,
-    filter: scope?.filter || '', historyApiAvailable: Boolean(chrome.history)
-  };
-  if (!scope || !permission || !chrome.history) return report;
-  try {
-    const visits = await chrome.history.search({ text: scope.base.hostname, startTime: 0, maxResults: 10000 });
-    report.domainResults = visits.length;
-    report.candidates = await historySuggestions(input, pairs, []);
-    report.domainExamples = visits.slice(0, 3).map(item => item.url);
-  } catch (error) { report.error = error.message; }
-  return report;
-}
-
 let inputRevision = 0;
-chrome.omnibox.onInputCancelled.addListener(() => { inputRevision++; });
+chrome.omnibox.onInputCancelled.addListener(() => {
+  inputRevision++;
+  historyCache = { hostname: '', visits: [], timestamp: 0 };
+});
 
 function navigateToUrl(url) {
   const formattedUrl = /^[a-zA-Z]+:\/\//.test(url) ? url : `https://${url}`;
@@ -144,10 +178,11 @@ chrome.omnibox.onInputChanged.addListener(async (text, suggest) => {
   if (revision !== inputRevision) return;
   const query = normalizeShortcut(text);
   const target = resolveInput(text, keyValuePairs);
+  const i18n = getOmniboxText();
   chrome.omnibox.setDefaultSuggestion({
-    description: !query ? idleSuggestion : target.matched
-      ? `按 Enter 打开 → <url>${escapeSuggestionText(target.url)}</url>`
-      : `未找到快捷路径，按 Enter 使用 Google 搜索 <match>${escapeSuggestionText(target.search)}</match>`
+    description: !query ? i18n.idle : target.matched
+      ? i18n.open(target.url)
+      : i18n.search(target.search)
   });
   const aliases = Object.entries(keyValuePairs)
     .filter(([path]) => path.startsWith(query) || path.includes(query))
@@ -160,7 +195,7 @@ chrome.omnibox.onInputChanged.addListener(async (text, suggest) => {
   if (revision !== inputRevision) return;
   if (!target.matched && history.length) {
     chrome.omnibox.setDefaultSuggestion({
-      description: '选择下方历史记录打开 <dim>· 直接按 Enter 使用 Google 搜索</dim>'
+      description: i18n.historyHint
     });
   }
   suggest([...aliases, ...history].slice(0, 12));

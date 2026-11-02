@@ -25,7 +25,7 @@ const translations = {
     syncLimits: '主题仅保存在当前设备。同步额度约 100 KB / 单项 8 KB / 512 项（含设备与删除记录）；暂不支持 iCloud。',
     omniboxHint: '地址栏 <code>{keyword}</code> + <code>Tab</code> 或空格跳转路径，例如 <code>dev github</code>',
     keywordLabel: '地址栏触发词', downloadManifest: '下载配置',
-    keywordHelp: '将下载文件替换到当前扩展目录中的 manifest.json，再到扩展管理页刷新。请保留原目录和扩展，避免丢失数据。Tab 和空格无需设置。',
+    keywordHelp: '将下载文件替换到当前扩展目录中的 manifest.json，再到扩展管理页刷新。请保留原目录和扩展，避免丢失数据。Tab 和空格无需设置。（提示：仅限源码/解压安装模式；应用商店版本不可修改）',
     invalidKeyword: '请输入 1–32 个字母或数字作为触发词。',
     captureHint: '保存当前页面',
     urlHint: '支持 https://、http://、chrome-extension://、chrome://',
@@ -61,7 +61,7 @@ const translations = {
     syncLimits: 'Theme stays on this device. Sync allows about 100 KB total / 8 KB per item / 512 items, including device and deletion records. No iCloud sync yet.',
     omniboxHint: 'Address bar <code>{keyword}</code> + <code>Tab</code> or Space jumps to a path, e.g. <code>dev github</code>',
     keywordLabel: 'Address bar keyword', downloadManifest: 'Download config',
-    keywordHelp: 'Replace manifest.json in the current extension folder with the downloaded file, then reload the extension. Keep the existing folder and installation to preserve data. Tab and Space stay unchanged.',
+    keywordHelp: 'Replace manifest.json in the current extension folder with the downloaded file, then reload the extension. Keep the existing folder and installation to preserve data. Tab and Space stay unchanged. (Note: Only available for unpacked/source installations; Web Store versions cannot be modified)',
     invalidKeyword: 'Use 1–32 letters or digits for the keyword.',
     captureHint: 'Save current page',
     urlHint: 'Supports https://, http://, chrome-extension://, chrome://',
@@ -166,16 +166,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('addButton').addEventListener('click', addKeyValuePair);
   document.getElementById('importButton').addEventListener('click', () => importShortcutsFromJSON());
   document.getElementById('exportButton').addEventListener('click', exportShortcutsToJSON);
-  document.getElementById('historyCheckButton').addEventListener('click', async () => {
-    const input = prompt('输入要检查的内容（不含 j），例如 git/tv60：', 'git/tv60');
-    if (input === null) return;
-    try {
-      const result = await chrome.runtime.sendMessage({ type: 'jumpkey:shortcuts', action: 'historyCheck', input });
-      const report = JSON.stringify(result, null, 2);
-      await navigator.clipboard.writeText(report);
-      alert('检查结果已复制，请粘贴到聊天中：\n\n' + report);
-    } catch (error) { alert('检查失败：' + error.message); }
-  });
   document.getElementById('githubButton').addEventListener('click', () => chrome.tabs.create({ url: 'https://github.com/jiamadi/jumpalias' }));
   [keyInput, valueInput].forEach((input) => input.addEventListener('keydown', (event) => {
     if (event.key === 'Enter' && !event.isComposing && event.keyCode !== 229) {
@@ -209,7 +199,13 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 });
 
-function copyToClipboard(text) {
+async function copyToClipboard(text) {
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text);
+      return;
+    }
+  } catch { /* Fallback to execCommand below */ }
   const textarea = document.createElement('textarea');
   textarea.value = text;
   document.body.appendChild(textarea);
@@ -242,8 +238,8 @@ function downloadKeywordManifest() {
   }
 }
 
-function exportShortcutsToJSON() {
-  copyToClipboard(JSON.stringify(keyValuePairs));
+async function exportShortcutsToJSON() {
+  await copyToClipboard(JSON.stringify(keyValuePairs));
   alert(t('exported'));
 }
 
