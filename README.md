@@ -2,7 +2,7 @@
 
 Give your pages memorable paths. JumpAlias is a lightweight Chrome extension for saving frequently visited URLs and opening them directly from the address bar.
 
-[![Platform: Chrome](https://img.shields.io/badge/platform-Chrome-4285F4?logo=googlechrome&logoColor=white)](https://www.google.com/chrome/) ![Manifest V3](https://img.shields.io/badge/manifest-V3-4285F4) ![JavaScript](https://img.shields.io/badge/language-JavaScript-F7DF1E) ![Chrome Sync](https://img.shields.io/badge/sync-Chrome-34A853) ![Version 2.0.0](https://img.shields.io/badge/version-2.0.0-6C3CFF) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+[![Chrome Web Store](https://img.shields.io/badge/Chrome_Web_Store-JumpAlias-4285F4?logo=googlechrome&logoColor=white)](https://chromewebstore.google.com/detail/jumpalias/gcfdhmapdpniheoankhkkpofajgcmibd) ![Manifest V3](https://img.shields.io/badge/manifest-V3-4285F4) ![JavaScript](https://img.shields.io/badge/language-JavaScript-F7DF1E) ![Chrome Sync](https://img.shields.io/badge/sync-Chrome-34A853) ![Version 2.0.0](https://img.shields.io/badge/version-2.0.0-6C3CFF) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
 **English** · [简体中文](README.zh-CN.md)
 
@@ -32,6 +32,10 @@ The gear opens the usage guide, shortcut settings and sync information. Language
 Screenshots show an example configuration; saved paths are user-defined.
 
 ## Quick start
+
+### Install from Chrome Web Store
+
+Install JumpAlias directly from the [Chrome Web Store](https://chromewebstore.google.com/detail/jumpalias/gcfdhmapdpniheoankhkkpofajgcmibd).
 
 ### Install from source
 

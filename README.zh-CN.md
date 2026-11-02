@@ -2,7 +2,7 @@
 
 给常用页面一个好记的路径。JumpAlias 是一款轻量的 Chrome 扩展，帮你收录常用网址，并直接从地址栏快速打开。
 
-[![Platform: Chrome](https://img.shields.io/badge/platform-Chrome-4285F4?logo=googlechrome&logoColor=white)](https://www.google.com/chrome/) ![Manifest V3](https://img.shields.io/badge/manifest-V3-4285F4) ![JavaScript](https://img.shields.io/badge/language-JavaScript-F7DF1E) ![Chrome Sync](https://img.shields.io/badge/sync-Chrome-34A853) ![Version 2.0.0](https://img.shields.io/badge/version-2.0.0-6C3CFF) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+[![Chrome Web Store](https://img.shields.io/badge/Chrome_Web_Store-JumpAlias-4285F4?logo=googlechrome&logoColor=white)](https://chromewebstore.google.com/detail/jumpalias/gcfdhmapdpniheoankhkkpofajgcmibd) ![Manifest V3](https://img.shields.io/badge/manifest-V3-4285F4) ![JavaScript](https://img.shields.io/badge/language-JavaScript-F7DF1E) ![Chrome Sync](https://img.shields.io/badge/sync-Chrome-34A853) ![Version 2.0.0](https://img.shields.io/badge/version-2.0.0-6C3CFF) [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
 [English](README.md) · **简体中文**
 
@@ -32,6 +32,10 @@
 截图展示的是示例配置，路径由使用者自行设置。
 
 ## 快速开始
+
+### 从 Chrome 网上应用店安装
+
+直接前往 [Chrome 网上应用店 (Chrome Web Store)](https://chromewebstore.google.com/detail/jumpalias/gcfdhmapdpniheoankhkkpofajgcmibd) 点击**添加至 Chrome**即可安装。
 
 ### 从源码安装
 
