@@ -2,6 +2,7 @@
 // same-named synced entries on this device without modifying the remote value.
 (function (root) {
   const KEY = 'jumpaliasLocalPaths';
+  const TIMES = 'jumpaliasLocalTimes';
   const TRANSFERS = 'jumpaliasLocalTransfers';
   function createScopedStore({ local, synced }) {
     let queue = Promise.resolve();
@@ -11,7 +12,15 @@
       return next;
     };
     async function locals() { return (await local.get(KEY))[KEY] || {}; }
-    async function save(values) { await local.set({ [KEY]: values }); }
+    async function save(values) {
+      const previous = await locals();
+      const times = (await local.get(TIMES))[TIMES] || {};
+      for (const [path, url] of Object.entries(values)) {
+        if (previous[path] !== url) times[path] = Date.now();
+      }
+      for (const path of Object.keys(times)) if (!Object.hasOwn(values, path)) delete times[path];
+      await local.set({ [KEY]: values, [TIMES]: times });
+    }
     async function finishLocalTransfers() {
       const pending = (await local.get(TRANSFERS))[TRANSFERS] || [];
       for (const path of pending) await synced.remove(path);
@@ -19,10 +28,13 @@
     }
     async function snapshot() {
       await finishLocalTransfers();
-      const remote = await synced.list();
+      const remoteSnapshot = await synced.snapshot();
+      const remote = remoteSnapshot.pairs;
       const device = await locals();
+      const times = (await local.get(TIMES))[TIMES] || {};
       return {
         pairs: { ...remote, ...device },
+        timestamps: { ...remoteSnapshot.timestamps, ...Object.fromEntries(Object.keys(device).map(path => [path, times[path] || 0])) },
         localPaths: Object.keys(device),
         overrides: Object.keys(device).filter(path => Object.hasOwn(remote, path))
       };
@@ -36,7 +48,10 @@
         if (!Object.hasOwn(device, path)) {
           if (!Object.hasOwn(remote, path)) throw new Error('Shortcut no longer exists');
           device[path] = remote[path];
-          await local.set({ [KEY]: device, [TRANSFERS]: [path] });
+          const remoteSnapshot = await synced.snapshot();
+          const times = (await local.get(TIMES))[TIMES] || {};
+          times[path] = remoteSnapshot.timestamps[path] || 0;
+          await local.set({ [KEY]: device, [TIMES]: times, [TRANSFERS]: [path] });
           // Persist the transfer intent with its source before touching Sync.
           await finishLocalTransfers();
         }

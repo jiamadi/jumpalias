@@ -171,6 +171,13 @@
 
     return {
       list: () => serialized(reconcile),
+      snapshot: () => serialized(async () => {
+        const pairs = await reconcile();
+        const timestamps = Object.fromEntries(Object.entries(state.records)
+          .filter(([, record]) => !record.deleted)
+          .map(([key, record]) => [decodeURIComponent(key.slice(R.PATH_PREFIX.length)), record.updatedAt]));
+        return { pairs, timestamps };
+      }),
       put: (path, url) => serialized(() => mutate({ [path]: url })),
       remove: (path) => serialized(() => mutate({ [path]: null })),
       import: (pairs) => serialized(() => mutate(pairs))

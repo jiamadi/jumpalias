@@ -6,6 +6,8 @@ let commandShortcut = '';
 let shortcutReadError = false;
 let preferredShortcut = '';
 let addingShortcut = false;
+let sortOrder = 'alphabetical';
+let pathTimestamps = {};
 let newSyncEnabled = true;
 let localPaths = new Set();
 let overridePaths = new Set();
@@ -111,6 +113,7 @@ function applyTranslations() {
   updateListTitle();
   updateHeaderControls();
   updateSaveLocationControl();
+  updateSortControl();
   if (tree) renderTree();
 }
 
@@ -178,6 +181,32 @@ function updateShortcutCopy() {
 function updateListTitle() {
   const title = document.getElementById('shortcutListTitle');
   if (title) title.textContent = t('listTitle', { count: Object.keys(keyValuePairs).length });
+}
+
+function updateSortControl() {
+  const button = document.getElementById('sortToggle');
+  if (!button) return;
+  const labels = language === 'zh'
+    ? { alphabetical: '字典序；点击按最近保存排序', newest: '最近保存优先；点击按最早保存排序', oldest: '最早保存优先；点击恢复字典序' }
+    : { alphabetical: 'Alphabetical; click for newest first', newest: 'Newest first; click for oldest first', oldest: 'Oldest first; click for alphabetical' };
+  button.dataset.order = sortOrder;
+  const arrow = sortOrder === 'oldest' ? 'M12 20V4m-5 5 5-5 5 5' : 'M12 4v16m-5-5 5 5 5-5';
+  button.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="' +
+    (sortOrder === 'alphabetical' ? 'M8 4v16m-4-4 4 4 4-4M17 20V4m-4 4 4-4 4 4' : arrow) + '"/></svg>';
+  button.setAttribute('aria-label', labels[sortOrder]);
+  button.onmouseenter = button.onfocus = () => showScopeTooltip(button, labels[sortOrder]);
+  button.onmouseleave = button.onblur = hideScopeTooltip;
+}
+
+function compareTreeNodes(a, b) {
+  if (sortOrder !== 'alphabetical') {
+    // Older entries without a recorded time stay last in either direction.
+    if (!a.timestamp && b.timestamp) return 1;
+    if (a.timestamp && !b.timestamp) return -1;
+    const difference = (a.timestamp || 0) - (b.timestamp || 0);
+    if (difference) return sortOrder === 'oldest' ? difference : -difference;
+  }
+  return a.path.localeCompare(b.path);
 }
 
 function paintSyncButton(button, enabled, overridden = false) {
@@ -255,6 +284,10 @@ function updateSaveLocationControl() {
 async function refreshScopes() {
   const snapshot = await ShortcutRepository.snapshot();
   keyValuePairs = snapshot.pairs;
+  if (!snapshot.timestamps) throw new Error(language === 'zh'
+    ? '后台尚未加载时间排序功能，请点击重新加载扩展（保留数据）。'
+    : 'The background has not loaded time sorting. Reload the extension to update it.');
+  pathTimestamps = snapshot.timestamps;
   localPaths = new Set(snapshot.localPaths);
   overridePaths = new Set(snapshot.overrides);
 }
@@ -289,6 +322,25 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('settingsToggle').setAttribute('aria-expanded', String(!panel.hidden));
   });
   tree = document.getElementById('shortcutTree');
+  const savedSort = (await chrome.storage.local.get('pathSortOrder')).pathSortOrder;
+  sortOrder = ['alphabetical', 'newest', 'oldest'].includes(savedSort) ? savedSort : 'alphabetical';
+  updateSortControl();
+  document.getElementById('sortToggle').addEventListener('click', async () => {
+    hideScopeTooltip();
+    sortOrder = { alphabetical: 'newest', newest: 'oldest', oldest: 'alphabetical' }[sortOrder];
+    updateSortControl();
+    try {
+      await refreshScopes();
+      renderTree();
+      await chrome.storage.local.set({ pathSortOrder: sortOrder });
+      const times = Object.keys(keyValuePairs).map(path => pathTimestamps[path] || 0);
+      if (sortOrder !== 'alphabetical' && times.length > 1 && new Set(times).size <= 1) {
+        showStorageError(new Error(language === 'zh'
+          ? '现有路径没有可区分的保存时间（旧数据或同批导入），暂按字典序排列；之后新增的路径会按时间排序。'
+          : 'Existing paths have no distinct save times (legacy data or one import). Alphabetical order is used for ties; new paths will sort by time.'));
+      } else document.getElementById('storageNotice').hidden = true;
+    } catch (error) { showStorageError(error); }
+  });
   newSyncEnabled = (await chrome.storage.local.get('newSyncEnabled')).newSyncEnabled !== false;
   updateSaveLocationControl();
   document.getElementById('newSyncToggle').addEventListener('click', async () => {
@@ -550,6 +602,7 @@ async function addKeyValuePair() {
     if (aliases.length && !confirm(t('duplicateUrl', { paths: aliases.join('\n'), path }))) return;
     keyValuePairs = await ShortcutRepository.put(path, url, newSyncEnabled ? 'sync' : 'local');
     if (!newSyncEnabled) localPaths.add(path);
+    pathTimestamps[path] = Date.now();
   } catch (error) {
     alert(error.message);
     return;
@@ -577,6 +630,7 @@ function buildTree() {
     path.split(' ').forEach((part, index, parts) => {
       if (!node.children.has(part)) node.children.set(part, { children: new Map(), url: null, path: parts.slice(0, index + 1).join(' ') });
       node = node.children.get(part);
+      node.timestamp = Math.max(node.timestamp || 0, pathTimestamps[path] || 0);
     });
     node.url = url;
   }
@@ -587,7 +641,7 @@ function renderTree() {
   hideScopeTooltip();
   tree.replaceChildren();
   const root = buildTree();
-  const nodes = Array.from(root.children.values()).sort((a, b) => a.path.localeCompare(b.path));
+  const nodes = Array.from(root.children.values()).sort(compareTreeNodes);
   if (nodes.length === 0) {
     const empty = document.createElement('li');
     empty.className = 'empty-tree';
@@ -613,7 +667,7 @@ function renderNode(node) {
     }
     details.appendChild(summary);
     const children = document.createElement('ul');
-    Array.from(node.children.values()).sort((a, b) => a.path.localeCompare(b.path)).forEach((child) => children.appendChild(renderNode(child)));
+    Array.from(node.children.values()).sort(compareTreeNodes).forEach((child) => children.appendChild(renderNode(child)));
     details.appendChild(children);
     item.appendChild(details);
   } else {
