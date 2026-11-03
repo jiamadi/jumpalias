@@ -185,8 +185,66 @@ function paintSyncButton(button, enabled, overridden = false) {
     (enabled ? '' : '<path d="m3 3 18 18"/>') + '</svg>';
   button.setAttribute('aria-pressed', String(enabled));
   button.dataset.override = String(overridden);
-  button.title = t(overridden ? 'scopeOverride' : enabled ? 'scopeSync' : 'scopeLocal');
-  button.setAttribute('aria-label', button.title);
+  const label = t(overridden ? 'scopeOverride' : enabled ? 'scopeSync' : 'scopeLocal');
+  button.removeAttribute('title');
+  button.setAttribute('aria-label', label);
+  button.onmouseenter = button.onfocus = () => showScopeTooltip(button, label);
+  button.onmouseleave = button.onblur = hideScopeTooltip;
+}
+
+function hideScopeTooltip() {
+  document.getElementById('scopeTooltip')?.remove();
+  document.querySelectorAll('[aria-describedby="scopeTooltip"]').forEach(element => element.removeAttribute('aria-describedby'));
+}
+
+function showScopeTooltip(button, label) {
+  hideScopeTooltip();
+  const tooltip = document.createElement('div');
+  tooltip.id = 'scopeTooltip';
+  tooltip.className = 'scope-tooltip';
+  tooltip.setAttribute('role', 'tooltip');
+  tooltip.textContent = label;
+  document.body.appendChild(tooltip);
+  button.setAttribute('aria-describedby', tooltip.id);
+  const box = button.getBoundingClientRect();
+  const width = document.documentElement.clientWidth;
+  tooltip.style.left = Math.max(8, Math.min(box.right - tooltip.offsetWidth, width - tooltip.offsetWidth - 8)) + 'px';
+  const below = box.bottom + 6;
+  tooltip.style.top = (below + tooltip.offsetHeight < window.innerHeight - 8 ? below : Math.max(8, box.top - tooltip.offsetHeight - 6)) + 'px';
+}
+
+function showScopeConflict(path, button, conflict) {
+  document.querySelectorAll('.scope-conflict').forEach(element => element.remove());
+  const panel = document.createElement('div');
+  panel.className = 'scope-conflict';
+  panel.setAttribute('role', 'group');
+  panel.setAttribute('aria-label', language === 'zh' ? '选择保留版本' : 'Choose a version');
+  const message = document.createElement('div');
+  message.textContent = language === 'zh' ? '同名同步路径已存在，选择保留版本：' : 'A synced path exists. Choose a version:';
+  panel.appendChild(message);
+  for (const [resolution, label, url] of [
+    ['local', language === 'zh' ? '使用本机版本' : 'Use this device', conflict.localUrl],
+    ['sync', language === 'zh' ? '使用同步版本' : 'Use synced version', conflict.syncedUrl]
+  ]) {
+    const choice = document.createElement('button');
+    choice.type = 'button';
+    choice.textContent = `${label} · ${url}`;
+    choice.addEventListener('click', async (event) => {
+      event.preventDefault(); event.stopPropagation();
+      panel.querySelectorAll('button').forEach(element => { element.disabled = true; });
+      try {
+        await ShortcutRepository.setScope(path, 'sync', resolution);
+        await refreshScopes(); renderTree();
+      } catch (error) { showStorageError(error); panel.querySelectorAll('button').forEach(element => { element.disabled = false; }); }
+    });
+    panel.appendChild(choice);
+  }
+  const cancel = document.createElement('button');
+  cancel.type = 'button';
+  cancel.textContent = language === 'zh' ? '取消' : 'Cancel';
+  cancel.addEventListener('click', event => { event.preventDefault(); event.stopPropagation(); panel.remove(); });
+  panel.appendChild(cancel);
+  button.closest('.tree-leaf').insertAdjacentElement('afterend', panel);
 }
 
 function updateSaveLocationControl() {
@@ -203,22 +261,19 @@ async function refreshScopes() {
 
 async function changePathScope(path, button) {
   const local = localPaths.has(path);
-  if (!local && !confirm(t('makeLocal'))) return;
+  hideScopeTooltip();
   button.disabled = true;
   try {
     let result = await ShortcutRepository.setScope(path, local ? 'sync' : 'local');
     if (result.conflict) {
-      // A three-way choice preserves cancellation without changing either copy.
-      const choice = prompt(t('scopeConflict', { local: result.conflict.localUrl, remote: result.conflict.syncedUrl }) +
-        (language === 'zh' ? '\n输入 1 使用本机版本；输入 2 使用同步版本；取消则不修改。' : '\nEnter 1 for this device, 2 for synced; Cancel to leave unchanged.'));
-      if (!['1', '2'].includes(choice)) return;
-      result = await ShortcutRepository.setScope(path, 'sync', choice === '1' ? 'local' : 'sync');
+      showScopeConflict(path, button, result.conflict);
+      return;
     }
     await refreshScopes();
     renderTree();
   } catch (error) {
     await loadKeyValuePairs();
-    alert(error.message);
+    showStorageError(error);
   } finally { button.disabled = false; }
 }
 
@@ -529,6 +584,7 @@ function buildTree() {
 }
 
 function renderTree() {
+  hideScopeTooltip();
   tree.replaceChildren();
   const root = buildTree();
   const nodes = Array.from(root.children.values()).sort((a, b) => a.path.localeCompare(b.path));

@@ -378,3 +378,13 @@ html[data-platform="mac"], body[data-platform="mac"] {
   border-radius: 12px;
   overflow: hidden;
 }
+
+.scope-tooltip {
+  position: fixed; z-index: 1000; pointer-events: none;
+  max-width: min(280px, calc(100vw - 24px));
+  padding: 6px 9px; border: 1px solid var(--border); border-radius: 5px;
+  background: var(--surface); color: var(--text); font-size: 12px;
+  line-height: 1.5; box-shadow: 0 3px 12px #0003;
+}
+.scope-conflict { margin: 6px 0; padding: 8px; border: 1px solid var(--border); border-radius: 5px; font-size: 12px; }
+.scope-conflict button { display: block; margin-top: 6px; color: var(--link); text-align: left; overflow-wrap: anywhere; }
