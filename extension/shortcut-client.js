@@ -12,7 +12,9 @@ const ShortcutRepository = {
     return result.pairs;
   },
   list() { return this.request('list'); },
-  put(path, url) { return this.request('put', { path, url }); },
+  snapshot() { return this.request('snapshot'); },
+  setScope(path, scope, resolution) { return this.request('setScope', { path, scope, resolution }); },
+  put(path, url, scope) { return this.request('put', { path, url, scope }); },
   remove(path) { return this.request('remove', { path }); },
-  import(pairs) { return this.request('import', { pairs }); }
+  import(pairs, scope) { return this.request('import', { pairs, scope }); }
 };

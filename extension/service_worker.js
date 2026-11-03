@@ -1,14 +1,19 @@
-importScripts('sync-rules.js', 'sync-store.js');
+importScripts('sync-rules.js', 'sync-store.js', 'scoped-store.js');
 
-const shortcutStore = createJumpAliasSyncStore({ local: chrome.storage.local, sync: chrome.storage.sync });
+const shortcutStore = createJumpAliasScopedStore({
+  local: chrome.storage.local,
+  synced: createJumpAliasSyncStore({ local: chrome.storage.local, sync: chrome.storage.sync })
+});
 
 chrome.runtime.onMessage.addListener((message, sender, respond) => {
   if (sender.id !== chrome.runtime.id || message?.type !== 'jumpkey:shortcuts') return;
   const actions = {
     list: () => shortcutStore.list(),
-    put: () => shortcutStore.put(message.path, message.url),
+    snapshot: () => shortcutStore.snapshot(),
+    setScope: () => shortcutStore.setScope(message.path, message.scope, message.resolution),
+    put: () => shortcutStore.put(message.path, message.url, message.scope),
     remove: () => shortcutStore.remove(message.path),
-    import: () => shortcutStore.import(message.pairs)
+    import: () => shortcutStore.import(message.pairs, message.scope)
   };
   const action = actions[message.action];
   if (!action) { respond({ ok: false, error: 'Unknown shortcut operation' }); return; }

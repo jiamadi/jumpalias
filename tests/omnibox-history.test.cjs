@@ -5,7 +5,7 @@ function setup(search) {
   const events = {}, opened = [], calls = [], hints = [];
   const event = name => ({ addListener: fn => events[name] = fn });
   const pairs = { git: 'http://gitlab.qiyi.domain/tv', 'git-slash': 'http://gitlab.qiyi.domain/tv/', 'git saved': 'http://gitlab.qiyi.domain/tv/saved', 'git team': 'http://gitlab.qiyi.domain/team' };
-  const context = { URL, console, importScripts() {}, createJumpAliasSyncStore: () => ({ list: async () => pairs }), chrome: {
+  const context = { URL, console, importScripts() {}, createJumpAliasScopedStore: ({ synced }) => synced, createJumpAliasSyncStore: () => ({ list: async () => pairs }), chrome: {
     storage: { local: {}, sync: {}, onChanged: event('storage') },
     runtime: { onMessage: event('message'), onStartup: event('startup'), onInstalled: event('installed') },
     omnibox: { setDefaultSuggestion: x => hints.push(x.description), onInputStarted: event('start'), onInputCancelled: event('cancel'), onInputChanged: event('change'), onInputEntered: event('enter') },

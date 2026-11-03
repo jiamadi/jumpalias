@@ -6,9 +6,17 @@ let commandShortcut = '';
 let shortcutReadError = false;
 let preferredShortcut = '';
 let addingShortcut = false;
+let newSyncEnabled = true;
+let localPaths = new Set();
+let overridePaths = new Set();
 
 const translations = {
   zh: {
+    scopeSync: '跨设备同步；点击改为仅此设备', scopeLocal: '仅此设备；点击开启同步',
+    scopeOverride: '仅此设备（覆盖同名同步路径）；删除后会显示同步版本',
+    makeLocal: '改为仅此设备后，其他设备上的这条同步路径将在同步后移除，本机继续保留。是否继续？',
+    scopeConflict: '同名同步路径已存在。\n本机：{local}\n同步：{remote}\n\n请选择要保留的版本。',
+    importScope: '本次导入将保存为「{scope}」。是否继续？',
     duplicateUrl: '该地址已收录为：\n{paths}\n\n仍要使用新路径「{path}」添加另一个别名吗？',
     guideTitle: '设置与使用指南', guideSubtitle: '给常用页面一个好记的路径。',
     usageTitle: '快速开始', controlsTitle: '个性化设置', syncTitle: '同步与备份',
@@ -18,7 +26,7 @@ const translations = {
     shortcutHelp: '显示 Chrome 实际绑定。自定义组合需在 Chrome 设置页应用，插件内按键录入不会直接修改系统绑定。',
     keywordSummary: 'Tab 和空格是固定的进入方式。修改触发词属于高级设置，需要替换配置并重新加载扩展。',
     appearanceInstructions: '右上角可切换「中 / EN」；主题按「跟随系统 → 白天 → 夜晚」循环，悬停图标查看当前模式。',
-    syncInstructions: '路径与语言通过 Chrome 免费同步。各设备需登录同一 Google 账号、开启 Chrome 同步，并安装相同扩展 ID 的插件。',
+    syncInstructions: '亮起的云朵表示跨设备同步，带斜线的云朵表示仅此设备；点击可切换。新增 URL 时，+ 右侧的云朵控制保存位置并记住选择。父节点切换不影响子项。语言通过 Chrome 同步。各设备需登录同一 Google 账号、开启 Chrome 同步，并安装相同扩展 ID 的插件。',
     syncConflictHelp: '每条路径独立同步；相同路径发生冲突时，优先保留时间戳较新的版本。',
     syncDeleteHelp: '删除会等待活跃设备确认后清理。超过 30 天未活跃的设备重连时，会备份本地旧数据并以云端记录重建。',
     backupInstructions: '「导入」直接粘贴 JSON；「导出」将 JSON 复制到剪贴板。迁移或重装前建议先导出备份。',
@@ -46,6 +54,11 @@ const translations = {
     shortcutInvalid: '快捷键需要包含 ⌘、Ctrl 或 Alt，且不能使用 Ctrl+Alt。'
   },
   en: {
+    scopeSync: 'Sync across devices; click to keep only on this device', scopeLocal: 'Only on this device; click to sync',
+    scopeOverride: 'Only on this device (overrides synced path); deleting reveals the synced version',
+    makeLocal: 'Keep this path only on this device? Its synced copy will be removed from other devices when they sync.',
+    scopeConflict: 'A synced path already exists.\nThis device: {local}\nSynced: {remote}\n\nChoose which version to keep.',
+    importScope: 'Import these paths as “{scope}”?',
     duplicateUrl: 'This URL is already saved as:\n{paths}\n\nAdd another alias named “{path}” anyway?',
     guideTitle: 'Settings & guide', guideSubtitle: 'Give your pages memorable paths.',
     usageTitle: 'Quick start', controlsTitle: 'Personalize', syncTitle: 'Sync & backup',
@@ -55,7 +68,7 @@ const translations = {
     shortcutHelp: 'Shows Chrome’s actual binding. Apply custom combinations in Chrome settings; recording keys here does not change the active binding.',
     keywordSummary: 'Tab and Space are fixed activation keys. Changing the keyword is advanced: replace the configuration and reload the extension.',
     appearanceInstructions: 'Use the header to switch 中 / EN or cycle System → Light → Dark. Hover over the theme icon for its current mode.',
-    syncInstructions: 'Paths and language sync free through Chrome. Use the same Google account, enable Chrome Sync, and install the same extension ID on each device.',
+    syncInstructions: 'Use the cloud beside + to choose where new URLs are saved. A slashed cloud means only this device. Click a row’s cloud to change its location; children are unaffected. Language syncs through Chrome. Use the same Google account, enable Chrome Sync, and install the same extension ID on each device.',
     syncConflictHelp: 'Paths sync independently. For conflicting edits to the same path, the newer timestamp wins.',
     syncDeleteHelp: 'Deletions are cleaned up after active devices acknowledge them. Devices inactive for over 30 days back up old local data and rebuild from cloud on return.',
     backupInstructions: 'Import by pasting JSON; Export copies JSON to the clipboard. Export a backup before moving or reinstalling.',
@@ -97,6 +110,8 @@ function applyTranslations() {
   updateShortcutCopy();
   updateListTitle();
   updateHeaderControls();
+  updateSaveLocationControl();
+  if (tree) renderTree();
 }
 
 const themeModes = ['system', 'light', 'dark'];
@@ -145,6 +160,48 @@ function updateListTitle() {
   if (title) title.textContent = t('listTitle', { count: Object.keys(keyValuePairs).length });
 }
 
+function paintSyncButton(button, enabled, overridden = false) {
+  button.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 18a4 4 0 0 1-1-7.9A7 7 0 0 1 18.5 8a5 5 0 0 1-.5 10Z"/>' +
+    (enabled ? '' : '<path d="m3 3 18 18"/>') + '</svg>';
+  button.setAttribute('aria-pressed', String(enabled));
+  button.dataset.override = String(overridden);
+  button.title = t(overridden ? 'scopeOverride' : enabled ? 'scopeSync' : 'scopeLocal');
+  button.setAttribute('aria-label', button.title);
+}
+
+function updateSaveLocationControl() {
+  const button = document.getElementById('newSyncToggle');
+  if (button) paintSyncButton(button, newSyncEnabled);
+}
+
+async function refreshScopes() {
+  const snapshot = await ShortcutRepository.snapshot();
+  keyValuePairs = snapshot.pairs;
+  localPaths = new Set(snapshot.localPaths);
+  overridePaths = new Set(snapshot.overrides);
+}
+
+async function changePathScope(path, button) {
+  const local = localPaths.has(path);
+  if (!local && !confirm(t('makeLocal'))) return;
+  button.disabled = true;
+  try {
+    let result = await ShortcutRepository.setScope(path, local ? 'sync' : 'local');
+    if (result.conflict) {
+      // A three-way choice preserves cancellation without changing either copy.
+      const choice = prompt(t('scopeConflict', { local: result.conflict.localUrl, remote: result.conflict.syncedUrl }) +
+        (language === 'zh' ? '\n输入 1 使用本机版本；输入 2 使用同步版本；取消则不修改。' : '\nEnter 1 for this device, 2 for synced; Cancel to leave unchanged.'));
+      if (!['1', '2'].includes(choice)) return;
+      result = await ShortcutRepository.setScope(path, 'sync', choice === '1' ? 'local' : 'sync');
+    }
+    await refreshScopes();
+    renderTree();
+  } catch (error) {
+    await loadKeyValuePairs();
+    alert(error.message);
+  } finally { button.disabled = false; }
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
   const keyInput = document.getElementById('keyInput');
   const valueInput = document.getElementById('valueInput');
@@ -156,6 +213,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('settingsToggle').setAttribute('aria-expanded', String(!panel.hidden));
   });
   tree = document.getElementById('shortcutTree');
+  newSyncEnabled = (await chrome.storage.local.get('newSyncEnabled')).newSyncEnabled !== false;
+  updateSaveLocationControl();
+  document.getElementById('newSyncToggle').addEventListener('click', async () => {
+    newSyncEnabled = !newSyncEnabled;
+    updateSaveLocationControl();
+    try { await chrome.storage.local.set({ newSyncEnabled }); } catch (error) { alert(error.message); }
+  });
   document.getElementById('reloadStorageButton').addEventListener('click', () => chrome.runtime.reload());
   document.getElementById('keywordInput').value = chrome.runtime.getManifest().omnibox.keyword;
   document.getElementById('keywordSettingsButton').addEventListener('click', () => {
@@ -195,7 +259,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   await fillCurrentPage();
   window.addEventListener('focus', loadCommandShortcut);
   chrome.storage.onChanged.addListener((changes, area) => {
-    if (area === 'sync' && Object.keys(changes).some((key) => key.startsWith('jk:path:'))) {
+    if ((area === 'sync' && Object.keys(changes).some((key) => key.startsWith('jk:path:'))) ||
+        (area === 'local' && changes.jumpaliasLocalPaths)) {
       loadKeyValuePairs().catch(console.error);
     }
   });
@@ -266,7 +331,9 @@ async function importShortcutsFromJSON(jsonString) {
     if (Object.keys(pairs).length > 400 && !confirm(t('importQuotaWarning', { count: Object.keys(pairs).length }))) {
       return;
     }
-    keyValuePairs = await ShortcutRepository.import(pairs);
+    if (!confirm(t('importScope', { scope: language === 'zh' ? (newSyncEnabled ? '跨设备同步' : '仅此设备') : (newSyncEnabled ? 'Sync across devices' : 'Only on this device') }))) return;
+    keyValuePairs = await ShortcutRepository.import(pairs, newSyncEnabled ? 'sync' : 'local');
+    await refreshScopes();
     document.getElementById('storageNotice').hidden = true;
     renderTree();
     alert(t('imported'));
@@ -355,7 +422,7 @@ async function getShortcutPairs() {
 
 async function loadKeyValuePairs() {
   try {
-    keyValuePairs = await getShortcutPairs();
+    await refreshScopes();
     document.getElementById('storageNotice').hidden = true;
   } catch (error) {
     showStorageError(error);
@@ -405,7 +472,8 @@ async function addKeyValuePair() {
     }
     const aliases = JumpAliasUrlRules.aliasesForUrl(keyValuePairs, url);
     if (aliases.length && !confirm(t('duplicateUrl', { paths: aliases.join('\n'), path }))) return;
-    keyValuePairs = await ShortcutRepository.put(path, url);
+    keyValuePairs = await ShortcutRepository.put(path, url, newSyncEnabled ? 'sync' : 'local');
+    if (!newSyncEnabled) localPaths.add(path);
   } catch (error) {
     alert(error.message);
     return;
@@ -501,11 +569,21 @@ function renderLeaf(node, showName = true) {
     event.stopPropagation();
     try {
       keyValuePairs = await ShortcutRepository.remove(node.path);
+      await refreshScopes();
       renderTree();
     } catch (error) {
       alert(error.message);
     }
   });
-  row.append(link, remove);
+  const sync = document.createElement('button');
+  sync.type = 'button';
+  sync.className = 'icon-button sync-toggle';
+  paintSyncButton(sync, !localPaths.has(node.path), overridePaths.has(node.path));
+  sync.addEventListener('click', (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    changePathScope(node.path, sync);
+  });
+  row.append(link, sync, remove);
   return row;
 }
