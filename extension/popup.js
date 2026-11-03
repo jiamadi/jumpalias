@@ -137,12 +137,32 @@ function updateHeaderControls() {
   settings.setAttribute('aria-label', settings.title);
 }
 
+function detectPlatform(platform) {
+  const value = String(platform).toLowerCase();
+  if (value === 'mac' || value.includes('mac')) return 'mac';
+  if (value === 'win' || value.includes('win')) return 'win';
+  if (value === 'linux' || value.includes('linux')) return 'linux';
+  return 'other';
+}
+
+let currentPlatform = detectPlatform(typeof navigator === 'undefined' ? '' :
+  navigator.userAgentData?.platform || navigator.platform || '');
+
+async function initializePlatform() {
+  try {
+    const info = await chrome.runtime.getPlatformInfo();
+    currentPlatform = detectPlatform(info.os);
+  } catch { /* Fall back to the browser platform hint. */ }
+  document.documentElement.dataset.platform = currentPlatform;
+  document.body.dataset.platform = currentPlatform;
+}
+
 function isMac() {
-  return /mac/i.test(navigator.userAgentData?.platform || navigator.platform || '');
+  return currentPlatform === 'mac';
 }
 
 function defaultShortcut() {
-  return isMac() ? 'Command+Shift+K' : 'Ctrl+Shift+K';
+  return isMac() ? 'Command+Shift+J' : 'Ctrl+Shift+J';
 }
 
 function humanShortcut(shortcut) {
@@ -203,6 +223,7 @@ async function changePathScope(path, button) {
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
+  await initializePlatform();
   const keyInput = document.getElementById('keyInput');
   const valueInput = document.getElementById('valueInput');
   const languageToggle = document.getElementById('languageToggle');

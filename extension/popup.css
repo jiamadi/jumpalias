@@ -370,3 +370,11 @@ summary:focus-visible {
 .sync-toggle[aria-pressed="false"] { color: var(--muted); }
 .sync-toggle svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .sync-toggle[data-override="true"] { border: 1px dashed var(--muted); }
+
+/* Clip the popup content on macOS; Windows and Linux retain square edges. */
+html { background: transparent; }
+body { border-radius: 0; }
+html[data-platform="mac"], body[data-platform="mac"] {
+  border-radius: 12px;
+  overflow: hidden;
+}
